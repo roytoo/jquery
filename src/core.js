@@ -38,12 +38,6 @@ var jQuery = function( selector, context ) {
 	rvalidtokens = /"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?/g,
 	rvalidbraces = /(?:^|:|,)(?:\s*\[)+/g,
 
-	// Useragent RegExp
-	rwebkit = /(webkit)[ \/]([\w.]+)/,
-	ropera = /(opera)(?:.*version)?[ \/]([\w.]+)/,
-	rmsie = /(msie) ([\w.]+)/,
-	rmozilla = /(mozilla)(?:.*? rv:([\w.]+))?/,
-
 	// Matches dashed string for camelizing
 	rdashAlpha = /-([a-z])/ig,
 
@@ -829,13 +823,24 @@ jQuery.extend({
 	uaMatch: function( ua ) {
 		ua = ua.toLowerCase();
 
-		var match = rwebkit.exec( ua ) ||
-			ropera.exec( ua ) ||
-			rmsie.exec( ua ) ||
-			ua.indexOf("compatible") < 0 && rmozilla.exec( ua ) ||
+		var match = /(chrome)[ \/]([\w.]+)/.exec( ua ) ||
+			/(webkit)[ \/]([\w.]+)/.exec( ua ) ||
+			/(opera)(?:.*version|)[ \/]([\w.]+)/.exec( ua ) ||
+			/(msie) ([\w.]+)/.exec( ua ) ||
+			ua.indexOf("trident") && /(rv) ([\w.]+)/.exec( ua ) ||
+			ua.indexOf("compatible") < 0 && /(mozilla)(?:.*? rv:([\w.]+)|)/.exec( ua ) ||
 			[];
-
-		return { browser: match[1] || "", version: match[2] || "0" };
+	
+		var platform_match = /(ipad)/.exec( ua ) ||
+			/(iphone)/.exec( ua ) ||
+			/(android)/.exec( ua ) ||
+			[];
+	
+		return {
+			browser: match[ 1 ] || "",
+			version: match[ 2 ] || "0",
+			platform: platform_match[0] || ""
+		};
 	},
 
 	sub: function() {
@@ -873,9 +878,20 @@ if ( browserMatch.browser ) {
 	jQuery.browser.version = browserMatch.version;
 }
 
-// Deprecated, use jQuery.browser.webkit instead
-if ( jQuery.browser.webkit ) {
+if ( browserMatch.platform ) {
+	jQuery.browser[ browserMatch.platform ] = true;
+}
+
+// Chrome is Webkit, but Webkit is also Safari.
+if ( jQuery.browser.chrome ) {
+	jQuery.browser.webkit = true;
+} else if ( jQuery.browser.webkit ) {
 	jQuery.browser.safari = true;
+}
+
+// IE11 has a new token so we will assign it msie to avoid breaking changes
+if (jQuery.browser.rv) {
+	jQuery.browser.msie = true;
 }
 
 // IE doesn't match non-breaking spaces with \s

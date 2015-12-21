@@ -5,7 +5,7 @@ BUILD_DIR = build
 PREFIX = .
 DIST_DIR = ${PREFIX}/dist
 
-JS_ENGINE ?= `which node nodejs`
+JS_ENGINE ?= `which node `
 COMPILER = ${JS_ENGINE} ${BUILD_DIR}/uglify.js --unsafe
 POST_COMPILER = ${JS_ENGINE} ${BUILD_DIR}/post-compile.js
 
@@ -44,7 +44,7 @@ DATE=$(shell git log -1 --pretty=format:%ad)
 
 all: update_submodules core
 
-core: jquery min lint
+core: jquery min hint size
 	@@echo "jQuery build complete."
 
 ${DIST_DIR}:
@@ -65,26 +65,24 @@ ${SRC_DIR}/selector.js: ${SIZZLE_DIR}/sizzle.js
 	@@echo "Building selector code from Sizzle"
 	@@sed '/EXPOSE/r src/sizzle-jquery.js' ${SIZZLE_DIR}/sizzle.js | grep -v window.Sizzle > ${SRC_DIR}/selector.js
 
-lint: jquery
-	@@if test ! -z ${JS_ENGINE}; then \
-		echo "Checking jQuery against JSLint..."; \
-		${JS_ENGINE} build/jslint-check.js; \
-	else \
-		echo "You must have NodeJS installed in order to test jQuery against JSLint."; \
-	fi
-
+hint: jquery
+	@@echo "Checking jQuery against JSHint...";
+	@@${JS_ENGINE} build/jshint-check.js; 
 min: jquery ${JQ_MIN}
 
-${JQ_MIN}: ${JQ}
+size: jquery min
 	@@if test ! -z ${JS_ENGINE}; then \
-		echo "Minifying jQuery" ${JQ_MIN}; \
-		${COMPILER} ${JQ} > ${JQ_MIN}.tmp; \
-		${POST_COMPILER} ${JQ_MIN}.tmp > ${JQ_MIN}; \
-		rm -f ${JQ_MIN}.tmp; \
+		gzip -c ${JQ_MIN} > ${JQ_MIN}.gz; \
+		wc -c ${JQ} ${JQ_MIN} ${JQ_MIN}.gz | ${JS_ENGINE} ${BUILD_DIR}/sizer.js; \
+		rm ${JQ_MIN}.gz; \
 	else \
-		echo "You must have NodeJS installed in order to minify jQuery."; \
+		echo "You must have NodeJS installed in order to size jQuery."; \
 	fi
-	
+
+${JQ_MIN}: ${JQ}
+	${COMPILER} ${JQ} > ${JQ_MIN}.tmp;
+	${POST_COMPILER} ${JQ_MIN}.tmp > ${JQ_MIN};
+	rm -f ${JQ_MIN}.tmp;	
 
 clean:
 	@@echo "Removing Distribution directory:" ${DIST_DIR}
@@ -117,4 +115,4 @@ pull_submodules:
 pull: pull_submodules
 	@@git pull ${REMOTE} ${BRANCH}
 
-.PHONY: all jquery lint min clean distclean update_submodules pull_submodules pull core
+.PHONY: all jquery hint min clean distclean update_submodules pull_submodules pull core
